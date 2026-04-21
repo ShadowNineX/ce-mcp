@@ -192,9 +192,9 @@
                                 Style="{StaticResource ThemedButton}"
                                 Click="StartStopButton_Click"/>
                         <Button x:Name="openApiButton"
-                                Content="Copy SSE URL"
+                                Content="Copy URL"
                                 Style="{StaticResource ThemedButton}"
-                                Click="CopySseUrlButton_Click"/>
+                                Click="CopyUrlButton_Click"/>
                 </WrapPanel>
 
                 <!-- Test Result -->

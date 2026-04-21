@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-Cheat Engine MCP Server — a C# plugin that exposes Cheat Engine functionality as MCP tools over SSE (Server-Sent Events) using the official [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk).
+Cheat Engine MCP Server — a C# plugin that exposes Cheat Engine functionality as MCP tools over Streamable HTTP using the official [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk).
 
 **Key Architecture**:
-- **MCP SSE Server**: ASP.NET Core app on `http://127.0.0.1:6300` with SSE at `/sse`
+- **MCP Server**: ASP.NET Core app on `http://127.0.0.1:6300` with Streamable HTTP at `/`
 - **CE Plugin Host**: Runs inside Cheat Engine process, manages server lifecycle via menu
 - **CESDK Submodule**: C# wrapper for CE's Lua API (git submodule dependency)
 - **Single DLL**: All dependencies embedded, copy to CE plugins folder to deploy
@@ -39,7 +39,7 @@ dotnet build -c Release
 ### Core Components
 
 - **Plugin.cs** — Main CE plugin entry point (`McpPlugin : CheatEnginePlugin`). Manages MCP server lifecycle, registers Lua functions for CE menu integration (`toggle_mcp_server`, `show_mcp_config`), provides WPF config UI. Handles assembly resolution for WPF components.
-- **McpServer.cs** — MCP SSE server using `ModelContextProtocol.AspNetCore`. Registers all tools via `WithTools<T>()`, resources via `WithResources<T>()`, and maps endpoints with `MapMcp()`. Runs ASP.NET Core with minimal logging in background task.
+- **McpServer.cs** — MCP server using `ModelContextProtocol.AspNetCore`. Registers all tools via `WithTools<T>()`, resources via `WithResources<T>()`, and maps endpoints with `MapMcp()`. Runs ASP.NET Core with minimal logging in background task.
 - **ServerConfig.cs** — Configuration management (host/port/name). Loads from `%APPDATA%\CeMCP\config.json` with env var overrides (`MCP_HOST`, `MCP_PORT`). Uses source-generated JSON serialization.
 - **ThemeHelper.cs** — Cross-platform dark mode detection (Windows registry, macOS `defaults`, Linux GTK settings)
 
@@ -139,7 +139,7 @@ public static class MyResource
 - **CE thread safety**: Use `CESDK.Synchronize()` for operations that must run on CE's main thread (e.g., AddressList operations)
 - **Memory scanning**: Requires scan → `WaitTillDone()` → `foundList.Initialize()` sequence
 - **Dark mode**: UI adapts via Windows registry check (`ThemeHelper.IsInDarkMode()`)
-- Default server: `http://127.0.0.1:6300` with MCP SSE at `/sse`
+- Default server: `http://127.0.0.1:6300` with MCP Streamable HTTP at `/`
 - **CE Lua API docs**: [celua.txt](../celua.txt) (workspace root copy) or `C:\Program Files\Cheat Engine\celua.txt` — the authoritative reference for all CE Lua functions, objects, and their parameters
 - **WPF Assembly Resolution**: Plugin.cs registers AssemblyResolve handler to fix WPF's `Application.LoadComponent` in CE host process
 - **Config location**: `%APPDATA%\CeMCP\config.json` for persistent settings, env vars `MCP_HOST`/`MCP_PORT` override

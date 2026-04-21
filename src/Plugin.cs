@@ -14,7 +14,7 @@ namespace CEMCP
     public class McpPlugin : CheatEnginePlugin
     {
         private bool isServerRunning = false;
-        private McpSseServer? mcpServer;
+        private McpServer? mcpServer;
         private Window? configWindow = null;
         private Thread? configThread = null;
 
@@ -198,7 +198,7 @@ namespace CEMCP
             }
         }
 
-        public McpSseServer? GetServerWrapper()
+        public McpServer? GetServerWrapper()
         {
             return mcpServer;
         }
@@ -219,13 +219,13 @@ namespace CEMCP
 
             try
             {
-                mcpServer = new McpSseServer();
+                mcpServer = new McpServer();
                 ServerConfig.LoadFromFile();
                 ServerConfig.LoadFromEnvironment(); // Environment variables override config file
                 mcpServer.Start(ServerConfig.ConfigBaseUrl);
 
                 isServerRunning = true;
-                PluginContext.Lua.DoString($"print('MCP SSE Server started on: {ServerConfig.ConfigBaseUrl}')");
+                PluginContext.Lua.DoString($"print('MCP Server started on: {ServerConfig.ConfigBaseUrl}')");
                 UpdateButtonText();
             }
             catch (Exception ex)

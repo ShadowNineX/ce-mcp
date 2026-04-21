@@ -11,9 +11,9 @@ A Model Context Protocol (MCP) server plugin for Cheat Engine that provides acce
 
 ## Architecture
 
-This project exposes Cheat Engine functionality as MCP tools over SSE (Server-Sent Events) using the official [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk).
+This project exposes Cheat Engine functionality as MCP tools over Streamable HTTP using the official [Model Context Protocol C# SDK](https://github.com/modelcontextprotocol/csharp-sdk).
 
-- **MCP SSE Server**: Runs on `http://localhost:6300` with SSE transport at `/sse`
+- **MCP Server**: Runs on `http://localhost:6300` with Streamable HTTP transport at `/`
 - **11 MCP Tool Classes**: Lua execution, process management, memory read/write, AOB scanning, disassembly, memory scanning, address list management, and more
 - **Single DLL Plugin**: All dependencies embedded - just drop into Cheat Engine plugins folder
 - **Direct MCP Integration**: Connect AI clients (Claude Desktop, VS Code Copilot, etc.) directly — no bridge client needed
@@ -116,7 +116,7 @@ dotnet build -c Release
 1. Build the plugin and copy to Cheat Engine plugins directory
 2. Start Cheat Engine and enable the plugin
 3. Use "MCP" menu to start the server
-4. Connect your MCP client to `http://localhost:6300/sse`
+4. Connect your MCP client to `http://localhost:6300/`
 
 ### MCP Client Configuration
 
@@ -126,7 +126,7 @@ Add the following to your MCP client configuration (e.g. Claude Desktop `claude_
 {
   "mcpServers": {
     "cheat-engine": {
-      "url": "http://localhost:6300/sse"
+      "url": "http://localhost:6300/"
     }
   }
 }

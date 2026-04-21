@@ -61,10 +61,14 @@ namespace CEMCP.Views
             try
             {
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-                var response = await client.GetAsync($"{_viewModel.BaseUrl}/sse",
-                    HttpCompletionOption.ResponseHeadersRead);
+                // Streamable HTTP requires Accept: application/json, text/event-stream
+                client.DefaultRequestHeaders.Add("Accept", "application/json, text/event-stream");
+                var content = new StringContent(
+                    "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1.0\"}}}",
+                    System.Text.Encoding.UTF8, "application/json");
+                var response = await client.PostAsync(_viewModel.BaseUrl, content);
                 _viewModel.TestResult = response.IsSuccessStatusCode
-                    ? "✓ Connection successful! MCP SSE Server is responding."
+                    ? "✓ Connection successful! MCP Server is responding."
                     : $"✗ Server responded with status: {response.StatusCode}";
             }
             catch (HttpRequestException ex)
@@ -104,11 +108,11 @@ namespace CEMCP.Views
             }
         }
 
-        private void CopySseUrlButton_Click(object sender, RoutedEventArgs e)
+        private void CopyUrlButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                var url = $"{_viewModel.BaseUrl}/sse";
+                var url = _viewModel.BaseUrl;
                 Clipboard.SetText(url);
                 _viewModel.TestResult = $"Copied to clipboard: {url}";
             }

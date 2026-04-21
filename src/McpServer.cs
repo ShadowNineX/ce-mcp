@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CEMCP
 {
-    public class McpSseServer
+    public class McpServer
     {
         private WebApplication? _app;
         private CancellationTokenSource? _cts;
@@ -24,7 +24,7 @@ namespace CEMCP
                 WebRootPath = System.IO.Path.GetTempPath()
             });
 
-            // Setup MCP server with SSE transport and all tools
+            // Setup MCP server with Streamable HTTP transport and all tools
             builder.Services.AddMcpServer(options =>
             {
                 options.ServerInfo = new()
@@ -34,7 +34,10 @@ namespace CEMCP
                         .GetName().Version?.ToString() ?? "1.0.0"
                 };
             })
-            .WithHttpTransport()
+            .WithHttpTransport(options =>
+            {
+                options.Stateless = true;
+            })
             .WithTools<Tools.ProcessTool>()
             .WithTools<Tools.LuaExecutionTool>()
             .WithTools<Tools.MemoryTool>()
@@ -52,7 +55,7 @@ namespace CEMCP
             // Build app
             _app = builder.Build();
 
-            // Map MCP endpoints (SSE + Streamable HTTP)
+            // Map MCP endpoints (Streamable HTTP)
             _app.MapMcp();
 
             // Start server in background

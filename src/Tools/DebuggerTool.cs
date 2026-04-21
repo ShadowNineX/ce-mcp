@@ -18,6 +18,46 @@ namespace Tools
         private const string InvalidAddressMsg = "Invalid address format";
         private const string DefaultDataType = "int32";
 
+        // Lua IIFE: builds a register table from the current debug context.
+        // Caller must already have invoked debug_getContext(false).
+        private const string LuaBuildRegTable = @"(function()
+    if targetIs64Bit() then
+        return {
+            ip    = string.format('%016X', RIP),
+            ax    = string.format('%016X', RAX),
+            bx    = string.format('%016X', RBX),
+            cx    = string.format('%016X', RCX),
+            dx    = string.format('%016X', RDX),
+            si    = string.format('%016X', RSI),
+            di    = string.format('%016X', RDI),
+            bp    = string.format('%016X', RBP),
+            sp    = string.format('%016X', RSP),
+            r8    = string.format('%016X', R8),
+            r9    = string.format('%016X', R9),
+            r10   = string.format('%016X', R10),
+            r11   = string.format('%016X', R11),
+            r12   = string.format('%016X', R12),
+            r13   = string.format('%016X', R13),
+            r14   = string.format('%016X', R14),
+            r15   = string.format('%016X', R15),
+            flags = string.format('%08X', EFLAGS)
+        }
+    else
+        return {
+            ip    = string.format('%08X', EIP),
+            ax    = string.format('%08X', EAX),
+            bx    = string.format('%08X', EBX),
+            cx    = string.format('%08X', ECX),
+            dx    = string.format('%08X', EDX),
+            si    = string.format('%08X', ESI),
+            di    = string.format('%08X', EDI),
+            bp    = string.format('%08X', EBP),
+            sp    = string.format('%08X', ESP),
+            flags = string.format('%08X', EFLAGS)
+        }
+    end
+end)()";
+
         // ── Attach / Status ──────────────────────────────────────────────────
 
         [McpServerTool(Name = "dbg_start"), Description(
@@ -133,34 +173,11 @@ if __mcp_bp_hits[addrHex] == nil then __mcp_bp_hits[addrHex] = {{}} end
 debug_setBreakpoint({addr}, {size}, {ceTrigger}, function()
     local hit = {{}}
     debug_getContext(false)
-    if targetIs64Bit() then
-        hit.ip  = string.format('%016X', RIP)
-        hit.ax  = string.format('%016X', RAX)
-        hit.bx  = string.format('%016X', RBX)
-        hit.cx  = string.format('%016X', RCX)
-        hit.dx  = string.format('%016X', RDX)
-        hit.si  = string.format('%016X', RSI)
-        hit.di  = string.format('%016X', RDI)
-        hit.bp  = string.format('%016X', RBP)
-        hit.sp  = string.format('%016X', RSP)
-        local ipval = RIP
-        if ipval and ipval ~= 0 then
-            hit.instruction = disassemble(ipval)
-        end
-    else
-        hit.ip  = string.format('%08X', EIP)
-        hit.ax  = string.format('%08X', EAX)
-        hit.bx  = string.format('%08X', EBX)
-        hit.cx  = string.format('%08X', ECX)
-        hit.dx  = string.format('%08X', EDX)
-        hit.si  = string.format('%08X', ESI)
-        hit.di  = string.format('%08X', EDI)
-        hit.bp  = string.format('%08X', EBP)
-        hit.sp  = string.format('%08X', ESP)
-        local ipval = EIP
-        if ipval and ipval ~= 0 then
-            hit.instruction = disassemble(ipval)
-        end
+    local regs = {LuaBuildRegTable}
+    for k, v in pairs(regs) do hit[k] = v end
+    local ipval = tonumber(regs.ip, 16)
+    if ipval and ipval ~= 0 then
+        hit.instruction = disassemble(ipval)
     end
     hit.tick = getTickCount()
     table.insert(__mcp_bp_hits[addrHex], hit)
@@ -354,43 +371,9 @@ return 'ok'";
         {
             try
             {
-                string script = @"
+                string script = $@"
 debug_getContext(false)
-if targetIs64Bit() then
-    return {
-        ip  = string.format('%016X', RIP),
-        ax  = string.format('%016X', RAX),
-        bx  = string.format('%016X', RBX),
-        cx  = string.format('%016X', RCX),
-        dx  = string.format('%016X', RDX),
-        si  = string.format('%016X', RSI),
-        di  = string.format('%016X', RDI),
-        bp  = string.format('%016X', RBP),
-        sp  = string.format('%016X', RSP),
-        r8  = string.format('%016X', R8),
-        r9  = string.format('%016X', R9),
-        r10 = string.format('%016X', R10),
-        r11 = string.format('%016X', R11),
-        r12 = string.format('%016X', R12),
-        r13 = string.format('%016X', R13),
-        r14 = string.format('%016X', R14),
-        r15 = string.format('%016X', R15),
-        flags = string.format('%08X', EFLAGS)
-    }
-else
-    return {
-        ip  = string.format('%08X', EIP),
-        ax  = string.format('%08X', EAX),
-        bx  = string.format('%08X', EBX),
-        cx  = string.format('%08X', ECX),
-        dx  = string.format('%08X', EDX),
-        si  = string.format('%08X', ESI),
-        di  = string.format('%08X', EDI),
-        bp  = string.format('%08X', EBP),
-        sp  = string.format('%08X', ESP),
-        flags = string.format('%08X', EFLAGS)
-    }
-end";
+return {LuaBuildRegTable}";
                 var result = LuaExecutor.Execute(script);
                 return new { success = true, registers = result.Value };
             }
@@ -402,18 +385,7 @@ end";
 
         [McpServerTool(Name = "dbg_regs"), Description(
             "Read all standard registers (GP + segment + flags) from the broken thread's context.")]
-        public static object DbgRegs()
-        {
-            try
-            {
-                Debugger.GetContext(false);
-                return ReadRegisters();
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+        public static object DbgRegs() => DbgGpregs();
 
         [McpServerTool(Name = "dbg_regs_all"), Description(
             "Read all registers including FP0–FP7 and XMM0–XMM15 from the broken thread's context.")]

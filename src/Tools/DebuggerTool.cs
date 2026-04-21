@@ -66,38 +66,25 @@ end)()";
             "debugInterface: 0=default (recommended), 1=windows, 2=VEH, 3=kernel.")]
         public static object DbgStart(
             [Description("Debugger interface to use: 0=default, 1=windows, 2=VEH, 3=kernel")] int debugInterface = 0)
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.DebugProcess(debugInterface);
                 return new { success = true, message = "Debugger attached" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_exit"), Description(
             "Detach the Cheat Engine debugger from the target process.")]
         public static object DbgExit()
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.DetachIfPossible();
                 return new { success = true, message = "Debugger detached" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_is_debugging"), Description(
             "Check whether the CE debugger is currently attached to the process.")]
         public static object DbgIsDebugging()
-        {
-            try
+            => SafeRun(() =>
             {
                 bool active = Debugger.IsDebugging();
                 bool broken = active && Debugger.IsBroken();
@@ -111,26 +98,12 @@ end)()";
                     is_paused = paused,
                     debugger_interface = iface
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_is_broken"), Description(
             "Returns true if the debugger is currently halted on a breakpoint or single step.")]
         public static object DbgIsBroken()
-        {
-            try
-            {
-                return new { success = true, is_broken = Debugger.IsBroken() };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            => SafeRun(() => new { success = true, is_broken = Debugger.IsBroken() });
 
         // ── Breakpoints ──────────────────────────────────────────────────────
 
@@ -148,12 +121,8 @@ end)()";
             [Description("Watch size in bytes for write/access BPs (1, 2, 4, 8). Ignored for execute BPs.")] int size = 4,
             [Description("Breakpoint trigger: 'execute', 'write', or 'access'")] string trigger = "execute",
             [Description("When true, installs a hit-tracking callback that auto-continues and records instruction+registers per hit")] bool trackHits = false)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 string ceTrigger = trigger.ToLower() switch
                 {
                     "write" => "bptWrite",
@@ -195,90 +164,56 @@ return 'ok'";
                         message = $"Tracking breakpoint set. Trigger the write/access, then call dbg_get_bp_hits('{address}')."
                     };
                 }
-                else
+
+                // Simple breaking breakpoint (no callback).
+                Debugger.SetBreakpoint(addr, size, ceTrigger);
+                return new
                 {
-                    // Simple breaking breakpoint (no callback).
-                    Debugger.SetBreakpoint(addr, size, ceTrigger);
-                    return new
-                    {
-                        success = true,
-                        address = $"0x{addr:X}",
-                        trigger = ceTrigger,
-                        track_hits = false,
-                        message = "Breaking breakpoint set. When it fires use dbg_gpregs to read registers, then dbg_continue to resume."
-                    };
-                }
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+                    success = true,
+                    address = $"0x{addr:X}",
+                    trigger = ceTrigger,
+                    track_hits = false,
+                    message = "Breaking breakpoint set. When it fires use dbg_gpregs to read registers, then dbg_continue to resume."
+                };
+            });
 
         [McpServerTool(Name = "dbg_toggle_bp"), Description(
             "Toggle a breakpoint at the given address: remove it if it exists, add a new execute breakpoint if it does not.")]
         public static object DbgToggleBp(
             [Description("Memory address as hex string (e.g. '0x1234ABCD')")] string address)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 var list = Debugger.GetBreakpointList();
                 if (list.Contains(addr))
                 {
                     Debugger.RemoveBreakpoint(addr);
                     return new { success = true, action = "removed", address = $"0x{addr:X}" };
                 }
-                else
-                {
-                    Debugger.SetBreakpoint(addr, 1, "bptExecute");
-                    return new { success = true, action = "added", address = $"0x{addr:X}" };
-                }
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+                Debugger.SetBreakpoint(addr, 1, "bptExecute");
+                return new { success = true, action = "added", address = $"0x{addr:X}" };
+            });
 
         [McpServerTool(Name = "dbg_delete_bp"), Description(
             "Remove the breakpoint at the given address (execute, write, or access).")]
         public static object DbgDeleteBp(
             [Description("Memory address of the breakpoint to remove, as hex string (e.g. '0x1234ABCD')")] string address)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 Debugger.RemoveBreakpoint(addr);
                 return new { success = true, address = $"0x{addr:X}", message = "Breakpoint removed" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_bps"), Description(
             "List all currently active breakpoint addresses.")]
         public static object DbgBps()
-        {
-            try
+            => SafeRun(() =>
             {
                 var list = Debugger.GetBreakpointList();
                 var formatted = new List<string>(list.Count);
                 foreach (var bp in list)
                     formatted.Add($"0x{bp:X}");
                 return new { success = true, count = list.Count, breakpoints = formatted };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         // ── Hit Tracking ─────────────────────────────────────────────────────
 
@@ -289,12 +224,8 @@ return 'ok'";
         public static object DbgGetBpHits(
             [Description("The breakpoint address to get hits for, as hex string (e.g. '0x1234ABCD')")] string address,
             [Description("Maximum number of hits to return (newest first). 0 = return all.")] int maxHits = 0)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 string script = $@"
 if __mcp_bp_hits == nil then return {{}} end
 local addrHex = string.format('%016X', {addr})
@@ -311,23 +242,14 @@ return hits";
                     hits = hits.GetRange(hits.Count - maxHits, maxHits);
 
                 return new { success = true, address = $"0x{addr:X}", hit_count = hits.Count, hits };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_clear_bp_hits"), Description(
             "Clear the recorded hit history for a tracked breakpoint address.")]
         public static object DbgClearBpHits(
             [Description("The breakpoint address to clear hits for, as hex string")] string address)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 string script = $@"
 if __mcp_bp_hits ~= nil then
     local addrHex = string.format('%016X', {addr})
@@ -336,12 +258,7 @@ end
 return 'ok'";
                 LuaExecutor.Execute(script);
                 return new { success = true, address = $"0x{addr:X}", message = "Hit records cleared" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         // ── Registers ────────────────────────────────────────────────────────
 
@@ -351,37 +268,25 @@ return 'ok'";
             "Returns instruction pointer (RIP/EIP), all GPRs, stack pointer, and base pointer. " +
             "For 64-bit targets returns RAX–R15, RIP, RSP, RBP. For 32-bit returns EAX–EDI, EIP, ESP, EBP.")]
         public static object DbgGpregs()
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.GetContext(false);
                 return ReadRegisters();
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_gpregs_remote"), Description(
             "Read general-purpose registers via a Lua script call to debug_getContext. " +
             "Alternative to dbg_gpregs when the standard context read is unavailable. " +
             "Only meaningful when the debugger is broken on a thread.")]
         public static object DbgGpregsRemote()
-        {
-            try
+            => SafeRun(() =>
             {
                 string script = $@"
 debug_getContext(false)
 return {LuaBuildRegTable}";
                 var result = LuaExecutor.Execute(script);
                 return new { success = true, registers = result.Value };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_regs"), Description(
             "Read all standard registers (GP + segment + flags) from the broken thread's context.")]
@@ -390,25 +295,18 @@ return {LuaBuildRegTable}";
         [McpServerTool(Name = "dbg_regs_all"), Description(
             "Read all registers including FP0–FP7 and XMM0–XMM15 from the broken thread's context.")]
         public static object DbgRegsAll()
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.GetContext(true);
                 return ReadRegisters();
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_regs_named"), Description(
             "Read specific named registers from the broken thread's context. " +
             "Provide a comma-separated list of register names, e.g. 'RAX,RBX,RIP' or 'EAX,EIP'.")]
         public static object DbgRegsNamed(
             [Description("Comma-separated register names (e.g. 'RAX,RBX,RIP' or 'EAX,EBX,EIP')")] string registerNames)
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.GetContext(false);
                 var names = registerNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -419,20 +317,14 @@ return {LuaBuildRegTable}";
                     regs[name.ToUpper()] = $"0x{val:X}";
                 }
                 return new { success = true, registers = regs };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_regs_named_remote"), Description(
             "Read specific named registers via Lua from the broken thread's context. " +
             "Alternative to dbg_regs_named. Provide a comma-separated list of register names.")]
         public static object DbgRegsNamedRemote(
             [Description("Comma-separated register names (e.g. 'RAX,RBX,RIP')")] string registerNames)
-        {
-            try
+            => SafeRun(() =>
             {
                 var names = registerNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
                 var builder = new System.Text.StringBuilder();
@@ -447,27 +339,13 @@ return {LuaBuildRegTable}";
 
                 var result = LuaExecutor.Execute(builder.ToString());
                 return new { success = true, registers = result.Value };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_regs_remote"), Description(
             "Read all registers from the broken thread's context via Lua. " +
             "Returns both 32-bit and 64-bit register names for the current target architecture.")]
         public static object DbgRegsRemote()
-        {
-            try
-            {
-                return DbgGpregsRemote();
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            => SafeRun(() => DbgGpregsRemote());
 
         // ── Continue / Step ──────────────────────────────────────────────────
 
@@ -477,8 +355,7 @@ return {LuaBuildRegTable}";
             "'stepover' = step over next instruction (skips calls).")]
         public static object DbgContinue(
             [Description("Continue method: 'run' (default), 'stepinto', or 'stepover'")] string method = "run")
-        {
-            try
+            => SafeRun(() =>
             {
                 string ceMethod = method.ToLower() switch
                 {
@@ -489,44 +366,27 @@ return {LuaBuildRegTable}";
                 };
                 Debugger.ContinueFromBreakpoint(ceMethod);
                 return new { success = true, method = ceMethod };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_step_into"), Description(
             "Single-step into the next instruction (follows CALL instructions into called functions). " +
             "Debugger must be broken. After stepping, use dbg_gpregs to read the new instruction pointer.")]
         public static object DbgStepInto()
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.ContinueFromBreakpoint("co_stepinto");
                 return new { success = true, message = "Step-into issued. Wait for next break, then call dbg_gpregs." };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_step_over"), Description(
             "Single-step over the next instruction (skips over CALL instructions without entering them). " +
             "Debugger must be broken. After stepping, use dbg_gpregs to read the new instruction pointer.")]
         public static object DbgStepOver()
-        {
-            try
+            => SafeRun(() =>
             {
                 Debugger.ContinueFromBreakpoint("co_stepover");
                 return new { success = true, message = "Step-over issued. Wait for next break, then call dbg_gpregs." };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_run_to"), Description(
             "Set a one-shot execute breakpoint at the target address and continue execution. " +
@@ -534,12 +394,8 @@ return {LuaBuildRegTable}";
             "The breakpoint is left in place after firing — remove it with dbg_delete_bp if needed.")]
         public static object DbgRunTo(
             [Description("Target address to run to, as hex string (e.g. '0x1234ABCD')")] string address)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 // Set execute BP at target, then continue
                 Debugger.SetBreakpoint(addr, 1, "bptExecute");
                 Debugger.ContinueFromBreakpoint("co_run");
@@ -549,12 +405,7 @@ return {LuaBuildRegTable}";
                     target = $"0x{addr:X}",
                     message = "Execute BP set and continued. Execution will break when the address is reached."
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         // ── Stack Trace ──────────────────────────────────────────────────────
 
@@ -565,8 +416,7 @@ return {LuaBuildRegTable}";
             "Use disassemble_range or get_name_from_address to identify the callers.")]
         public static object DbgStacktrace(
             [Description("Number of stack entries to inspect (default 32, max 128)")] int depth = 32)
-        {
-            try
+            => SafeRun(() =>
             {
                 if (depth < 1) depth = 1;
                 if (depth > 128) depth = 128;
@@ -610,12 +460,7 @@ end
 return frames";
                 var result = LuaExecutor.Execute(script);
                 return new { success = true, frames = result.Value };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         // ── Read / Write memory while broken ─────────────────────────────────
 
@@ -627,12 +472,8 @@ return frames";
             [Description("Memory address as hex string")] string address,
             [Description("Data type: byte, int16, int32, int64, float, double, string, bytes")] string dataType = DefaultDataType,
             [Description("Length for 'bytes' or 'string' types")] int length = 16)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 object val = dataType.ToLower() switch
                 {
                     "byte" => MemoryAccess.ReadByte(addr),
@@ -647,12 +488,7 @@ return frames";
                 };
 
                 return new { success = true, address = $"0x{addr:X}", dataType, value = val };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         [McpServerTool(Name = "dbg_write"), Description(
             "Write a value to the target process memory (convenience wrapper for use while debugging). " +
@@ -662,12 +498,8 @@ return frames";
             [Description("Memory address as hex string")] string address,
             [Description("Value to write as string (e.g. '42', '3.14', 'hello')")] string value,
             [Description("Data type: byte, int16, int32, int64, float, double, string")] string dataType = DefaultDataType)
-        {
-            try
+            => SafeRunWithAddress(address, addr =>
             {
-                if (!TryParseAddress(address, out ulong addr))
-                    return new { success = false, error = InvalidAddressMsg };
-
                 bool ok = dataType.ToLower() switch
                 {
                     "byte" => MemoryAccess.WriteByte(addr, byte.Parse(value)),
@@ -681,14 +513,23 @@ return frames";
                 };
 
                 return new { success = ok, address = $"0x{addr:X}", dataType, value };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
-        }
+            });
 
         // ── Private helpers ──────────────────────────────────────────────────
+
+        private static object SafeRun(Func<object> action)
+        {
+            try { return action(); }
+            catch (Exception ex) { return new { success = false, error = ex.Message }; }
+        }
+
+        private static object SafeRunWithAddress(string address, Func<ulong, object> action)
+            => SafeRun(() =>
+            {
+                if (!TryParseAddress(address, out ulong addr))
+                    return new { success = false, error = InvalidAddressMsg };
+                return action(addr);
+            });
 
         private static bool TryParseAddress(string address, out ulong result)
         {
@@ -707,58 +548,42 @@ return frames";
             try
             {
                 // Heuristic: if RIP is non-zero, assume 64-bit
-                ulong rip = Debugger.GetRegister("RIP");
-                is64 = rip != 0;
+                is64 = Debugger.GetRegister("RIP") != 0;
             }
             catch (Exception)
             {
                 // RIP not available in 32-bit targets; fall back to EIP register set
             }
 
+            string prefix = is64 ? "R" : "E";
+
+            string Fmt(string name) => string.Format(
+                is64 ? "0x{0:X16}" : "0x{0:X8}",
+                Debugger.GetRegister(name));
+
+            var result = new Dictionary<string, object>
+            {
+                ["success"] = true,
+                ["bits"] = is64 ? 64 : 32,
+                ["ip"] = Fmt(prefix + "IP"),
+                ["ax"] = Fmt(prefix + "AX"),
+                ["bx"] = Fmt(prefix + "BX"),
+                ["cx"] = Fmt(prefix + "CX"),
+                ["dx"] = Fmt(prefix + "DX"),
+                ["si"] = Fmt(prefix + "SI"),
+                ["di"] = Fmt(prefix + "DI"),
+                ["bp"] = Fmt(prefix + "BP"),
+                ["sp"] = Fmt(prefix + "SP"),
+            };
+
             if (is64)
             {
-                return new
-                {
-                    success = true,
-                    bits = 64,
-                    ip = $"0x{Debugger.GetRegister("RIP"):X16}",
-                    ax = $"0x{Debugger.GetRegister("RAX"):X16}",
-                    bx = $"0x{Debugger.GetRegister("RBX"):X16}",
-                    cx = $"0x{Debugger.GetRegister("RCX"):X16}",
-                    dx = $"0x{Debugger.GetRegister("RDX"):X16}",
-                    si = $"0x{Debugger.GetRegister("RSI"):X16}",
-                    di = $"0x{Debugger.GetRegister("RDI"):X16}",
-                    bp = $"0x{Debugger.GetRegister("RBP"):X16}",
-                    sp = $"0x{Debugger.GetRegister("RSP"):X16}",
-                    r8 = $"0x{Debugger.GetRegister("R8"):X16}",
-                    r9 = $"0x{Debugger.GetRegister("R9"):X16}",
-                    r10 = $"0x{Debugger.GetRegister("R10"):X16}",
-                    r11 = $"0x{Debugger.GetRegister("R11"):X16}",
-                    r12 = $"0x{Debugger.GetRegister("R12"):X16}",
-                    r13 = $"0x{Debugger.GetRegister("R13"):X16}",
-                    r14 = $"0x{Debugger.GetRegister("R14"):X16}",
-                    r15 = $"0x{Debugger.GetRegister("R15"):X16}",
-                    flags = $"0x{Debugger.GetRegister("EFLAGS"):X8}"
-                };
+                for (int i = 8; i <= 15; i++)
+                    result["r" + i] = Fmt("R" + i);
             }
-            else
-            {
-                return new
-                {
-                    success = true,
-                    bits = 32,
-                    ip = $"0x{Debugger.GetRegister("EIP"):X8}",
-                    ax = $"0x{Debugger.GetRegister("EAX"):X8}",
-                    bx = $"0x{Debugger.GetRegister("EBX"):X8}",
-                    cx = $"0x{Debugger.GetRegister("ECX"):X8}",
-                    dx = $"0x{Debugger.GetRegister("EDX"):X8}",
-                    si = $"0x{Debugger.GetRegister("ESI"):X8}",
-                    di = $"0x{Debugger.GetRegister("EDI"):X8}",
-                    bp = $"0x{Debugger.GetRegister("EBP"):X8}",
-                    sp = $"0x{Debugger.GetRegister("ESP"):X8}",
-                    flags = $"0x{Debugger.GetRegister("EFLAGS"):X8}"
-                };
-            }
+
+            result["flags"] = $"0x{Debugger.GetRegister("EFLAGS"):X8}";
+            return result;
         }
 
         private static List<Dictionary<string, object>> ParseHitsFromResult(CESDK.Classes.LuaResult result)

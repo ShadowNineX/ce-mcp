@@ -47,7 +47,8 @@ namespace CEMCP
             .WithTools<Tools.AddressListTool>()
             .WithTools<Tools.AutoAssemblyTool>()
             .WithTools<Tools.MemoryViewTool>()
-            .WithTools<Tools.SymbolTool>();
+            .WithTools<Tools.SymbolTool>()
+            .WithTools<Tools.DebuggerTool>();
 
             builder.Logging.ClearProviders(); // Disable logging
             builder.WebHost.UseUrls(baseUrl);

@@ -7,189 +7,203 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
 
-    <Window.Resources>
-        <!-- Dark theme colors -->
-        <Color x:Key="DarkBg">#202020</Color>
-        <Color x:Key="DarkFg">#FFFFFF</Color>
-        <Color x:Key="DarkTextBoxBg">#333333</Color>
-        <Color x:Key="DarkTextBoxBorder">#555555</Color>
-        <Color x:Key="DarkBtnBg">#444444</Color>
-        <Color x:Key="DarkBtnBorder">#646464</Color>
-        <Color x:Key="DarkBtnHover">#555555</Color>
-        <Color x:Key="DarkBtnDisabledBg">#323232</Color>
-        <Color x:Key="DarkBtnDisabledFg">#646464</Color>
+        <Window.Resources>
+                <!-- Dark theme colors -->
+                <Color x:Key="DarkBg">#202020</Color>
+                <Color x:Key="DarkFg">#FFFFFF</Color>
+                <Color x:Key="DarkTextBoxBg">#333333</Color>
+                <Color x:Key="DarkTextBoxBorder">#555555</Color>
+                <Color x:Key="DarkBtnBg">#444444</Color>
+                <Color x:Key="DarkBtnBorder">#646464</Color>
+                <Color x:Key="DarkBtnHover">#555555</Color>
+                <Color x:Key="DarkBtnDisabledBg">#323232</Color>
+                <Color x:Key="DarkBtnDisabledFg">#646464</Color>
 
-        <!-- Light theme colors -->
-        <Color x:Key="LightBg">#FFFFFF</Color>
-        <Color x:Key="LightFg">#000000</Color>
-        <Color x:Key="LightTextBoxBg">#FFFFFF</Color>
-        <Color x:Key="LightTextBoxBorder">#AAAAAA</Color>
-        <Color x:Key="LightBtnBg">#F0F0F0</Color>
-        <Color x:Key="LightBtnBorder">#AAAAAA</Color>
-        <Color x:Key="LightBtnHover">#E1E1E1</Color>
-        <Color x:Key="LightBtnDisabledBg">#F5F5F5</Color>
-        <Color x:Key="LightBtnDisabledFg">#A0A0A0</Color>
+                <!-- Light theme colors -->
+                <Color x:Key="LightBg">#FFFFFF</Color>
+                <Color x:Key="LightFg">#000000</Color>
+                <Color x:Key="LightTextBoxBg">#FFFFFF</Color>
+                <Color x:Key="LightTextBoxBorder">#AAAAAA</Color>
+                <Color x:Key="LightBtnBg">#F0F0F0</Color>
+                <Color x:Key="LightBtnBorder">#AAAAAA</Color>
+                <Color x:Key="LightBtnHover">#E1E1E1</Color>
+                <Color x:Key="LightBtnDisabledBg">#F5F5F5</Color>
+                <Color x:Key="LightBtnDisabledFg">#A0A0A0</Color>
 
-        <!-- Button control template with hover/disabled states -->
-        <Style x:Key="ThemedButton"
-               TargetType="Button">
-            <Setter Property="Padding"
-                    Value="12,8"/>
-            <Setter Property="Width"
-                    Value="140"/>
-            <Setter Property="Margin"
-                    Value="2"/>
-            <Setter Property="BorderThickness"
-                    Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver"
-                                     Value="True">
-                                <Setter TargetName="border"
-                                        Property="Background"
-                                        Value="{DynamicResource BtnHoverBrush}"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled"
-                                     Value="False">
-                                <Setter TargetName="border"
-                                        Property="Background"
-                                        Value="{DynamicResource BtnDisabledBgBrush}"/>
-                                <Setter Property="Foreground"
-                                        Value="{DynamicResource BtnDisabledFgBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
+                <!-- Button control template with hover/disabled states -->
+                <Style x:Key="ThemedButton"
+                       TargetType="Button">
+                        <Setter Property="Padding"
+                                Value="12,8"/>
+                        <Setter Property="Width"
+                                Value="140"/>
+                        <Setter Property="Margin"
+                                Value="2"/>
+                        <Setter Property="BorderThickness"
+                                Value="1"/>
+                        <Setter Property="Template">
+                                <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                                <Border x:Name="border"
+                                                        Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center"
+                                                                          VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver"
+                                                                 Value="True">
+                                                                <Setter TargetName="border"
+                                                                        Property="Background"
+                                                                        Value="{DynamicResource BtnHoverBrush}"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsEnabled"
+                                                                 Value="False">
+                                                                <Setter TargetName="border"
+                                                                        Property="Background"
+                                                                        Value="{DynamicResource BtnDisabledBgBrush}"/>
+                                                                <Setter Property="Foreground"
+                                                                        Value="{DynamicResource BtnDisabledFgBrush}"/>
+                                                        </Trigger>
+                                                </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                </Setter.Value>
+                        </Setter>
+                </Style>
+        </Window.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+        <Grid Margin="20">
+                <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
 
-        <!-- Title -->
-        <TextBlock Grid.Row="0"
-                   Grid.ColumnSpan="2"
-                   Text="MCP Server Configuration"
-                   FontSize="16"
-                   FontWeight="Bold"
-                   Margin="0,0,0,20"/>
+                <!-- Title -->
+                <TextBlock Grid.Row="0"
+                           Grid.ColumnSpan="2"
+                           Text="MCP Server Configuration"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           Margin="0,0,0,20"/>
 
-        <!-- Host -->
-        <TextBlock Grid.Row="1"
-                   Grid.Column="0"
-                   Text="Host/IP:"
-                   VerticalAlignment="Center"
-                   Margin="0,0,5,0"/>
-        <TextBox Grid.Row="1"
-                 Grid.Column="1"
-                 x:Name="hostTextBox"
-                 Margin="5,2"
-                 Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Host -->
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           Text="Host/IP:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"/>
+                <TextBox Grid.Row="1"
+                         Grid.Column="1"
+                         x:Name="hostTextBox"
+                         Margin="5,2"
+                         Text="{Binding Host, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <!-- Port -->
-        <TextBlock Grid.Row="2"
-                   Grid.Column="0"
-                   Text="Port:"
-                   VerticalAlignment="Center"
-                   Margin="0,0,5,0"/>
-        <TextBox Grid.Row="2"
-                 Grid.Column="1"
-                 x:Name="portTextBox"
-                 Margin="5,2"
-                 Text="{Binding Port, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Port -->
+                <TextBlock Grid.Row="2"
+                           Grid.Column="0"
+                           Text="Port:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"/>
+                <TextBox Grid.Row="2"
+                         Grid.Column="1"
+                         x:Name="portTextBox"
+                         Margin="5,2"
+                         Text="{Binding Port, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <!-- Server Name -->
-        <TextBlock Grid.Row="3"
-                   Grid.Column="0"
-                   Text="Server Name:"
-                   VerticalAlignment="Center"
-                   Margin="0,0,5,0"/>
-        <TextBox Grid.Row="3"
-                 Grid.Column="1"
-                 x:Name="serverNameTextBox"
-                 Margin="5,2"
-                 Text="{Binding ServerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                <!-- Server Name -->
+                <TextBlock Grid.Row="3"
+                           Grid.Column="0"
+                           Text="Server Name:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"/>
+                <TextBox Grid.Row="3"
+                         Grid.Column="1"
+                         x:Name="serverNameTextBox"
+                         Margin="5,2"
+                         Text="{Binding ServerName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
 
-        <!-- Base URL -->
-        <TextBlock Grid.Row="4"
-                   Grid.Column="0"
-                   Text="Base URL:"
-                   VerticalAlignment="Center"
-                   Margin="0,0,5,0"/>
-        <TextBlock Grid.Row="4"
-                   Grid.Column="1"
-                   Text="{Binding BaseUrl}"
-                   VerticalAlignment="Center"
-                   Margin="5,2"
-                   FontFamily="Consolas"/>
+                <!-- Base URL -->
+                <TextBlock Grid.Row="4"
+                           Grid.Column="0"
+                           Text="Base URL:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"/>
+                <TextBlock Grid.Row="4"
+                           Grid.Column="1"
+                           Text="{Binding BaseUrl}"
+                           VerticalAlignment="Center"
+                           Margin="5,2"
+                           FontFamily="Consolas"/>
 
-        <!-- Status -->
-        <TextBlock Grid.Row="5"
-                   Grid.Column="0"
-                   Text="Status:"
-                   VerticalAlignment="Center"
-                   Margin="0,0,5,0"/>
-        <TextBlock Grid.Row="5"
-                   Grid.Column="1"
-                   x:Name="statusTextBlock"
-                   Text="{Binding ServerStatus}"
-                   VerticalAlignment="Center"
-                   Margin="5,2"
-                   FontWeight="Bold"
-                   Foreground="{Binding ServerStatusColor}"/>
+                <!-- Status -->
+                <TextBlock Grid.Row="5"
+                           Grid.Column="0"
+                           Text="Status:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"/>
+                <TextBlock Grid.Row="5"
+                           Grid.Column="1"
+                           x:Name="statusTextBlock"
+                           Text="{Binding ServerStatus}"
+                           VerticalAlignment="Center"
+                           Margin="5,2"
+                           FontWeight="Bold"
+                           Foreground="{Binding ServerStatusColor}"/>
 
-        <!-- Buttons -->
-        <WrapPanel Grid.Row="6"
-                   Grid.ColumnSpan="2"
-                   Orientation="Horizontal"
-                   Margin="0,20,0,10">
-            <Button Content="Save Configuration"
-                    Style="{StaticResource ThemedButton}"
-                    Click="SaveButton_Click"/>
-            <Button Content="Test Connection"
-                    Style="{StaticResource ThemedButton}"
-                    Click="TestButton_Click"/>
-            <Button Content="{Binding StartStopButtonText}"
-                    Style="{StaticResource ThemedButton}"
-                    Click="StartStopButton_Click"/>
-            <Button x:Name="openApiButton"
-                    Content="Copy SSE URL"
-                    Style="{StaticResource ThemedButton}"
-                    Click="CopySseUrlButton_Click"/>
-        </WrapPanel>
+                <!-- Version -->
+                <TextBlock Grid.Row="6"
+                           Grid.Column="0"
+                           Text="Version:"
+                           VerticalAlignment="Center"
+                           Margin="0,0,5,0"/>
+                <TextBlock Grid.Row="6"
+                           Grid.Column="1"
+                           Text="{Binding Version}"
+                           VerticalAlignment="Center"
+                           Margin="5,2"
+                           FontFamily="Consolas"/>
 
-        <!-- Test Result -->
-        <TextBlock Grid.Row="7"
-                   Grid.ColumnSpan="2"
-                   Text="{Binding TestResult}"
-                   TextWrapping="Wrap"
-                   Margin="0,10,0,0"
-                   FontFamily="Consolas"
-                   FontSize="11"/>
-    </Grid>
+                <!-- Buttons -->
+                <WrapPanel Grid.Row="7"
+                           Grid.ColumnSpan="2"
+                           Orientation="Horizontal"
+                           Margin="0,20,0,10">
+                        <Button Content="Save Configuration"
+                                Style="{StaticResource ThemedButton}"
+                                Click="SaveButton_Click"/>
+                        <Button Content="Test Connection"
+                                Style="{StaticResource ThemedButton}"
+                                Click="TestButton_Click"/>
+                        <Button Content="{Binding StartStopButtonText}"
+                                Style="{StaticResource ThemedButton}"
+                                Click="StartStopButton_Click"/>
+                        <Button x:Name="openApiButton"
+                                Content="Copy SSE URL"
+                                Style="{StaticResource ThemedButton}"
+                                Click="CopySseUrlButton_Click"/>
+                </WrapPanel>
+
+                <!-- Test Result -->
+                <TextBlock Grid.Row="8"
+                           Grid.ColumnSpan="2"
+                           Text="{Binding TestResult}"
+                           TextWrapping="Wrap"
+                           Margin="0,10,0,0"
+                           FontFamily="Consolas"
+                           FontSize="11"/>
+        </Grid>
 </Window>

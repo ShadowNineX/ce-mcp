@@ -73,5 +73,36 @@ namespace Tools
             }
         }
 
+        [McpServerTool(Name = "get_current_process"), Description("Get information about the process currently opened in Cheat Engine, including process ID, name, and threads")]
+        public static object GetCurrentProcess()
+        {
+            try
+            {
+                int processId = Process.GetOpenedProcessID();
+
+                if (processId == 0)
+                    return new { success = true, isOpen = false, message = "No process is currently attached" };
+
+                string processName = "Unknown";
+                try
+                {
+                    var processDict = Process.GetProcessList();
+                    if (processDict.TryGetValue(processId, out var name))
+                        processName = name;
+                }
+                catch (Exception) { /* process list unavailable, name stays "Unknown" */ }
+
+                var threadList = new ThreadList();
+                threadList.Refresh();
+                var threads = threadList.GetAllThreadIds();
+
+                return new { success = true, isOpen = true, processId, processName, threads };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, error = ex.Message };
+            }
+        }
+
     }
 }

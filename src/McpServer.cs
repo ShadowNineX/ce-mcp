@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Server;
 
 namespace CEMCP
 {
@@ -43,7 +42,9 @@ namespace CEMCP
             .WithTools<Tools.AssemblyTool>()
             .WithTools<Tools.ConversionTool>()
             .WithTools<Tools.AddressListTool>()
-            .WithResources<Resources.ProcessResources>();
+            .WithTools<Tools.AutoAssemblyTool>()
+            .WithTools<Tools.MemoryViewTool>()
+            .WithTools<Tools.SymbolTool>();
 
             builder.Logging.ClearProviders(); // Disable logging
             builder.WebHost.UseUrls(baseUrl);

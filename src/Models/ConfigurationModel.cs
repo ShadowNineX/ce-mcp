@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
@@ -14,6 +15,7 @@ namespace CEMCP.Models
         private string _testResult = "";
         private bool _isServerRunning = false;
         private bool _isDarkMode = false;
+        private readonly string _version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown";
 
         public string Host
         {
@@ -59,6 +61,8 @@ namespace CEMCP.Models
         public string BaseUrl => $"http://{Host}:{Port}";
 
         public string SseUrl => $"{BaseUrl}/sse";
+
+        public string Version => _version;
 
         public string StartStopButtonText => ServerStatus.Equals("running", System.StringComparison.CurrentCultureIgnoreCase) ? "Stop Server" : "Start Server";
 

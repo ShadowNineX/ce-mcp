@@ -45,25 +45,26 @@ dotnet build -c Release
 
 ### Tools (`src/Tools/`)
 
-All tools use `[McpServerToolType]` on the class and `[McpServerTool(Name = "tool_name")]` + `[Description]` on methods. Tools are static classes with static methods. Each returns anonymous objects with `success` boolean and either result data or `error` message.
+All tools use `[McpServerToolType]` on the class and `[McpServerTool(Name = "tool_name")]` + `[Description]` on methods. Tools are `public class` with a `private Constructor() {}` and static methods (not `static class` — required for MCP SDK DI). Each returns anonymous objects with `success` boolean and either result data or `error` message.
 
 - **ProcessTool** — Process and thread management (list/open processes, get current process ID)
 - **MemoryTool** — Memory read and write (bytes, int8/16/32/64, float, double, string, AOB patterns)
 - **ScanTool** — Memory scanning (first scan, next scan, reset, AOB scan) using MemScan/FoundList
 - **AssemblyTool** — Disassembly and address resolution (symbol lookups)
+- **AutoAssemblyTool** — Single-instruction assembly, Auto Assembler script execution and syntax checking
+- **MemoryViewTool** — Memory view operations: disassemble ranges, navigate code backwards, enumerate memory regions, query protections, set comments
+- **SymbolTool** — Symbol/module management: enumerate loaded modules, symbol lookup, enable Windows/kernel symbols, pointer size management
 - **AddressListTool** — Cheat table CRUD operations (get/add/update/delete/clear records)
 - **LuaExecutionTool** — Execute arbitrary Lua scripts in CE with stack management
 - **ConversionTool** — String format conversion (MD5, ANSI/UTF8)
 
 ### Resources (`src/Resources/`)
 
-Resources use `[McpServerResourceType]` on class and `[McpServerResource(UriTemplate = "scheme://path")]` + `[Description]` on methods. Resources are read-only state/data (vs tools which perform actions). Return JSON strings.
-
-- **ProcessResources** — `process://current` (opened process info), `process://threads` (thread list)
+> **Not yet implemented** — `src/Resources/` does not exist yet. Resources use `[McpServerResourceType]` on class and `[McpServerResource(UriTemplate = "scheme://path")]` + `[Description]` on methods. Resources are read-only state/data (vs tools which perform actions). Return JSON strings.
 
 ### SDK Layer (`CESDK/`)
 
-Git submodule — C# wrapper around Cheat Engine's Lua API. Key classes: `MemoryAccess`, `Process`, `AOBScanner`, `Disassembler`, `AddressResolver`, `MemScan`, `FoundList`, `AddressList`, `ThreadList`, `Converter`, `Speedhack`, `Debugger`, `SymbolWaiter`.
+Git submodule — C# wrapper around Cheat Engine's Lua API. Key classes: `MemoryAccess`, `Process`, `AOBScanner`, `Assembler`, `Disassembler`, `AddressResolver`, `MemScan`, `FoundList`, `AddressList`, `ThreadList`, `Converter`, `Speedhack`, `Debugger`, `SymbolWaiter`, `SymbolManager`, `MemoryRegions`.
 
 ### Views (`src/Views/`)
 
@@ -82,8 +83,10 @@ Git submodule — C# wrapper around Cheat Engine's Lua API. Key classes: `Memory
 Example:
 ```csharp
 [McpServerToolType]
-public static class MyTool
+public class MyTool
 {
+    private MyTool() { }
+
     [McpServerTool(Name = "my_action"), Description("Does something useful")]
     public static object MyAction([Description("Input param")] string input)
     {
@@ -126,7 +129,7 @@ public static class MyResource
 
 - C# with nullable reference types enabled, `TreatWarningsAsErrors`
 - Target: `net10.0-windows`, WPF enabled, x64 platform
-- Tools use static classes/methods, not instance-based
+- Tools are `public class` (not `static class`) with a `private Constructor() { }` and static methods — required by MCP SDK for DI compatibility
 - Wrap CE SDK calls in try-catch, always return structured response objects
 - Use proper Lua stack management (`GetTop`, `Pop`) when interacting with Lua
 
@@ -137,7 +140,7 @@ public static class MyResource
 - **Memory scanning**: Requires scan → `WaitTillDone()` → `foundList.Initialize()` sequence
 - **Dark mode**: UI adapts via Windows registry check (`ThemeHelper.IsInDarkMode()`)
 - Default server: `http://127.0.0.1:6300` with MCP SSE at `/sse`
-- **CE Lua API docs**: `C:\Program Files\Cheat Engine\celua.txt` — the authoritative reference for all CE Lua functions, objects, and their parameters
+- **CE Lua API docs**: [celua.txt](../celua.txt) (workspace root copy) or `C:\Program Files\Cheat Engine\celua.txt` — the authoritative reference for all CE Lua functions, objects, and their parameters
 - **WPF Assembly Resolution**: Plugin.cs registers AssemblyResolve handler to fix WPF's `Application.LoadComponent` in CE host process
 - **Config location**: `%APPDATA%\CeMCP\config.json` for persistent settings, env vars `MCP_HOST`/`MCP_PORT` override
 
@@ -161,7 +164,7 @@ The `CESDK/` directory is a git submodule providing the Cheat Engine SDK wrapper
 
 - **Core**: `CESDK.cs`, `CheatEnginePlugin.cs`, `PluginContext.cs`
 - **Lua**: `LuaNative.cs` (low-level C API bindings)
-- **Classes**: `MemoryAccess`, `Process`, `AOBScanner`, `Disassembler`, `AddressResolver`, `MemScan`, `FoundList`, `AddressList`, `ThreadList`, `Converter`, `Speedhack`, `Debugger`, `SymbolWaiter`, `LuaLogger`
+- **Classes**: `MemoryAccess`, `Process`, `AOBScanner`, `Assembler`, `Disassembler`, `AddressResolver`, `MemScan`, `FoundList`, `AddressList`, `ThreadList`, `Converter`, `Speedhack`, `Debugger`, `SymbolWaiter`, `SymbolManager`, `MemoryRegions`, `LuaLogger`, `LuaExecutor`
 - **Utils**: `LuaUtils.cs` (helper functions for Lua stack operations)
 
 Plugin pattern: inherit `CheatEnginePlugin`, implement `Name`/`OnEnable()`/`OnDisable()`, access Lua via `PluginContext.Lua`.

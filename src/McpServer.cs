@@ -38,17 +38,17 @@ namespace CEMCP
             {
                 options.Stateless = true;
             })
-            .WithTools<Tools.ProcessTool>()
-            .WithTools<Tools.LuaExecutionTool>()
-            .WithTools<Tools.MemoryTool>()
-            .WithTools<Tools.ScanTool>()
-            .WithTools<Tools.AssemblyTool>()
-            .WithTools<Tools.ConversionTool>()
-            .WithTools<Tools.AddressListTool>()
-            .WithTools<Tools.AutoAssemblyTool>()
-            .WithTools<Tools.MemoryViewTool>()
-            .WithTools<Tools.SymbolTool>()
-            .WithTools<Tools.DebuggerTool>();
+            .WithToolsAndSchemaTransform<Tools.ProcessTool>()
+            .WithToolsAndSchemaTransform<Tools.LuaExecutionTool>()
+            .WithToolsAndSchemaTransform<Tools.MemoryTool>()
+            .WithToolsAndSchemaTransform<Tools.ScanTool>()
+            .WithToolsAndSchemaTransform<Tools.AssemblyTool>()
+            .WithToolsAndSchemaTransform<Tools.ConversionTool>()
+            .WithToolsAndSchemaTransform<Tools.AddressListTool>()
+            .WithToolsAndSchemaTransform<Tools.AutoAssemblyTool>()
+            .WithToolsAndSchemaTransform<Tools.MemoryViewTool>()
+            .WithToolsAndSchemaTransform<Tools.SymbolTool>()
+            .WithToolsAndSchemaTransform<Tools.DebuggerTool>();
 
             builder.Logging.ClearProviders(); // Disable logging
             builder.WebHost.UseUrls(baseUrl);

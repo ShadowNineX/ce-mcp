@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using CESDK.Classes;
 using ModelContextProtocol.Server;
+using static CESDK.CESDK;
 
 namespace Tools
 {
@@ -30,7 +31,14 @@ namespace Tools
                 if (string.IsNullOrWhiteSpace(script))
                     return new { success = false, error = "Script parameter is required" };
 
-                var result = LuaExecutor.Execute(script);
+                // Run the script on CE's main GUI thread. CE's Lua state and
+                // engine internals (memory scanner, found lists, region enum)
+                // are not thread-safe; executing heavy operations directly on
+                // the MCP worker thread races CE's main thread and crashes the
+                // process (observed on nextScan over large found lists and on
+                // enum_memory_regions). Synchronize marshals onto the main
+                // thread, the same path reset_memory_scan already uses.
+                var result = Synchronize(() => LuaExecutor.Execute(script));
 
                 if (!result.HasValue)
                     return new { success = true, result = (object?)null, message = "Executed successfully (no return value)" };

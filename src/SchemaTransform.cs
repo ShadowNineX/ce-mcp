@@ -18,12 +18,20 @@ namespace CEMCP
     /// </summary>
     internal static class SchemaTransform
     {
+        private static readonly string[] OversizedNumericKeywords =
+        {
+            "default", "const", "minimum", "maximum",
+            "exclusiveMinimum", "exclusiveMaximum", "multipleOf",
+        };
+
         public static AIJsonSchemaCreateOptions SchemaCreateOptions { get; } = new()
         {
             TransformSchemaNode = static (context, node) =>
             {
-                if (node is JsonObject obj &&
-                    obj.TryGetPropertyValue("type", out JsonNode? typeNode) &&
+                if (node is not JsonObject obj)
+                    return node;
+
+                if (obj.TryGetPropertyValue("type", out JsonNode? typeNode) &&
                     typeNode is JsonArray typeArray)
                 {
                     string? nonNull = null;
@@ -45,10 +53,48 @@ namespace CEMCP
                         obj["type"] = nonNull;
                 }
 
+                // Drop numeric schema keywords whose value overflows signed 64-bit.
+                // The Anthropic tool-schema converter rejects them with
+                // "int too big to convert"; e.g. a `ulong x = ulong.MaxValue`
+                // parameter (ScanTool.stopAddress) emits
+                // "default": 18446744073709551615. The method still applies its
+                // own default at call time, and these are only optional hints/
+                // bounds, so removing them is semantically identical.
+                foreach (string keyword in OversizedNumericKeywords)
+                {
+                    if (obj.TryGetPropertyValue(keyword, out JsonNode? valueNode) &&
+                        valueNode is JsonValue value && !FitsInt64(value))
+                    {
+                        obj.Remove(keyword);
+                    }
+                }
+
                 return node;
             }
         };
 
+        private static bool FitsInt64(JsonValue value)
+        {
+            // In range as a signed 64-bit integer.
+            if (value.TryGetValue(out long _))
+                return true;
+            // A positive integer larger than long.MaxValue (e.g. ulong.MaxValue).
+            if (value.TryGetValue(out ulong _))
+                return false;
+            // An integral value outside the signed-64 range in either direction.
+            if (value.TryGetValue(out decimal dec) && decimal.Truncate(dec) == dec)
+                return dec >= long.MinValue && dec <= long.MaxValue;
+            // Non-integer (float) or non-numeric — leave it untouched.
+            return true;
+        }
+
+        /// <summary>
+        /// Registers every <see cref="McpServerToolAttribute"/>-marked method on
+        /// <typeparamref name="TToolType"/> as an MCP tool, wiring in
+        /// <see cref="SchemaCreateOptions"/> so the generated JSON schema is
+        /// Anthropic-API compatible.
+        /// </summary>
+        /// <typeparam name="TToolType">The type whose tool methods are registered.</typeparam>
         public static IMcpServerBuilder WithToolsAndSchemaTransform<[DynamicallyAccessedMembers(
             DynamicallyAccessedMemberTypes.PublicMethods |
             DynamicallyAccessedMemberTypes.NonPublicMethods |
@@ -76,7 +122,13 @@ namespace CEMCP
                     builder.Services.AddSingleton((Func<IServiceProvider, McpServerTool>)(services =>
                         McpServerTool.Create(
                             method,
-                            r => ActivatorUtilities.CreateInstance(r.Services!, typeof(TToolType)),
+                            r =>
+                            {
+                                if (r.Services is null)
+                                    throw new InvalidOperationException(
+                                        $"Cannot create tool '{typeof(TToolType).Name}': the request has no IServiceProvider.");
+                                return ActivatorUtilities.CreateInstance(r.Services, typeof(TToolType));
+                            },
                             new McpServerToolCreateOptions
                             {
                                 Services = services,

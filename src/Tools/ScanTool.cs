@@ -62,7 +62,7 @@ namespace Tools
             if (!IsProcessAttached())
                 return new { success = false, error = "No process is attached. Please open a process first using 'open_process' tool." };
 
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(pattern))
                     return new { success = false, error = "AOB pattern is required" };
@@ -76,11 +76,7 @@ namespace Tools
 
                 var addresses = result.Select(addr => $"0x{addr:X}").ToList();
                 return new { success = true, addresses };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
 #pragma warning disable S107 // Methods should not have too many parameters
@@ -94,7 +90,7 @@ namespace Tools
             [Description("Primary scan input value")] string input1 = "",
             [Description("Secondary scan input (for between scans)")] string? input2 = null,
             [Description("Start address for scan range")] ulong startAddress = 0,
-            [Description("Stop address for scan range")] ulong stopAddress = ulong.MaxValue,
+            [Description("Stop address for scan range")] ulong stopAddress = 0x7FFFFFFFFFFFFFFF,
             [Description("Memory protection flags (e.g. '+W-C')")] string protectionFlags = "+W-C",
             [Description("Alignment type")] AlignmentType alignmentType = AlignmentType.fsmAligned,
             [Description("Alignment parameter")] string alignmentParam = "4",
@@ -138,6 +134,14 @@ namespace Tools
                         IsCaseSensitive = isCaseSensitive,
                         IsPercentageScan = isPercentageScan
                     };
+
+                    // Release any FoundList still initialized from a previous
+                    // scan BEFORE scanning again. A foundlist left attached to
+                    // this memscan holds pointers into the prior result set; the
+                    // next scan frees/reallocates those results, so CE would
+                    // write through stale pointers and crash. This is the root
+                    // cause of the nextScan-over-a-large-set crashes.
+                    scanner.DeinitializeResults();
 
                     // Use the high-level Scan() method which auto-detects first vs next scan
                     scanner.Scan(parameters);

@@ -19,7 +19,7 @@ namespace Tools
             "List all loaded modules (DLLs/EXEs) in the target process with their base addresses, sizes, and paths")]
         public static object EnumModules()
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 var modules = SymbolManager.EnumModules();
                 var result = modules.Select(m => new
@@ -33,18 +33,14 @@ namespace Tools
                 }).ToList();
 
                 return new { success = true, count = result.Count, modules = result };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_symbol_info"), Description("Get detailed information about a symbol (function, variable, export)")]
         public static object GetSymbolInfo(
             [Description("Symbol name to look up (e.g. 'kernel32.CreateFileW', 'game.exe+1000')")] string symbolName)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(symbolName))
                     return new { success = false, error = "Symbol name is required" };
@@ -61,11 +57,7 @@ namespace Tools
                     address = $"0x{info.Address:X}",
                     size = info.Size
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_name_from_address"), Description("Get the symbol name or module+offset for a given address")]
@@ -75,7 +67,7 @@ namespace Tools
             [Description("Include symbol names in result")] bool symbols = true,
             [Description("Include section names in result")] bool sections = false)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = "Address is required" };
@@ -95,18 +87,14 @@ namespace Tools
                     inModule,
                     inSystemModule
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_module_size"), Description("Get the size of a loaded module by name")]
         public static object GetModuleSize(
             [Description("Module name (e.g. 'game.exe', 'kernel32.dll')")] string moduleName)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(moduleName))
                     return new { success = false, error = "Module name is required" };
@@ -122,11 +110,7 @@ namespace Tools
                     size,
                     sizeHex = $"0x{size:X}"
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "enable_symbols"), Description(
@@ -135,7 +119,7 @@ namespace Tools
         public static object EnableSymbols(
             [Description("Symbol type to enable: 'windows' or 'kernel'")] string symbolType)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(symbolType))
                     return new { success = false, error = "Symbol type is required ('windows' or 'kernel')" };
@@ -151,34 +135,26 @@ namespace Tools
                     default:
                         return new { success = false, error = $"Unknown symbol type: {symbolType}. Use 'windows' or 'kernel'" };
                 }
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "reinitialize_symbols"), Description("Reinitialize the symbol handler (useful after new modules are loaded)")]
         public static object ReinitializeSymbols(
             [Description("Wait until symbol reinitialization is complete")] bool waitTillDone = true)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 SymbolManager.ReinitializeSymbolHandler(waitTillDone);
                 var done = SymbolManager.SymbolsDoneLoading();
                 return new { success = true, symbolsLoaded = done };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "wait_for_symbols"), Description("Wait for symbols to finish loading at a specific level")]
         public static object WaitForSymbols(
             [Description("Symbol level to wait for: 'sections', 'exports', 'dotnet', or 'pdb'")] string level = "exports")
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 var symbolLevel = level?.ToLower() switch
                 {
@@ -191,18 +167,14 @@ namespace Tools
 
                 SymbolWaiter.WaitFor(symbolLevel);
                 return new { success = true, level = level, loaded = true };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_pointer_size"), Description("Get or set the pointer size CE uses (in bytes). Some 64-bit processes only use 32-bit addresses.")]
         public static object GetOrSetPointerSize(
             [Description("If provided, set the pointer size to this value (4 or 8 bytes). If omitted, returns current size.")] int? newSize = null)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (newSize.HasValue)
                 {
@@ -214,11 +186,7 @@ namespace Tools
                     var size = SymbolManager.GetPointerSize();
                     return new { success = true, pointerSize = size };
                 }
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         private static bool TryParseAddress(string address, out ulong result) =>

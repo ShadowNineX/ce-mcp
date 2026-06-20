@@ -20,7 +20,7 @@ namespace Tools
             [Description("Address to assemble at (affects relative addressing). Hex string e.g. '0x401000'")] string? address = null,
             [Description("Preference: 0=none, 1=short, 2=long, 3=far")] int assemblePreference = 0)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(instruction))
                     return new { success = false, error = "Instruction is required" };
@@ -37,11 +37,7 @@ namespace Tools
                     hex = string.Join(" ", bytes.Select(b => $"{b:X2}")),
                     size = bytes.Length
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "auto_assemble"), Description(
@@ -52,18 +48,14 @@ namespace Tools
             [Description("Auto assembler script text. Supports [ENABLE]/[DISABLE] sections, alloc(), label(), etc.")] string script,
             [Description("If true, assemble into Cheat Engine process instead of target")] bool targetSelf = false)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(script))
                     return new { success = false, error = "Script is required" };
 
                 var result = Assembler.AutoAssemble(script, targetSelf);
                 return new { success = result };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "auto_assemble_check"), Description("Check an Auto Assembler script for syntax errors without executing it")]
@@ -72,7 +64,7 @@ namespace Tools
             [Description("Check in enable mode (true) or disable mode (false)")] bool enable = true,
             [Description("If true, check against CE process instead of target")] bool targetSelf = false)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(script))
                     return new { success = false, error = "Script is required" };
@@ -82,11 +74,7 @@ namespace Tools
                     return new { success = true, syntaxValid = true };
                 else
                     return new { success = true, syntaxValid = false, error = errorMessage ?? "Unknown syntax error" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         private static bool TryParseAddress(string address, out ulong result) =>

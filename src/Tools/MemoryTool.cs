@@ -33,7 +33,7 @@ namespace Tools
         {
             if (!IsProcessAttached())
                 return new { success = false, error = "No process is attached. Please open a process first using 'open_process' tool." };
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = "Address parameter is required" };
@@ -65,11 +65,7 @@ namespace Tools
                 };
 
                 return new { success = true, value };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "write_memory"), Description("Write a value to memory at the given address")]
@@ -83,7 +79,7 @@ namespace Tools
             if (!IsProcessAttached())
                 return new { success = false, error = "No process is attached. Please open a process first using 'open_process' tool." };
 
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = "Address parameter is required" };
@@ -111,11 +107,7 @@ namespace Tools
                 };
 
                 return new { success = true, value = written };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         private static bool TryParseAddress(string address, out ulong result) =>

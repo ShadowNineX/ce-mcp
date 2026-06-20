@@ -15,7 +15,7 @@ namespace Tools
             [Description("The input string to convert")] string input,
             [Description("Conversion type: 'md5', 'ansitoutf8', 'utf8toansi'")] string conversionType)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(input))
                     return new { success = false, error = "Input is required" };
@@ -32,11 +32,7 @@ namespace Tools
                 };
 
                 return new { success = true, result };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
     }
 }

@@ -12,15 +12,12 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
-    <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <DebugType>embedded</DebugType>
 
-    <!-- Force all dependencies to be copied locally -->
+    <!-- Feed NuGet dependencies to Costura so they are embedded into ce-mcp.dll. -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-
-    <!-- Generate runtime config to help find framework assemblies -->
-    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <GenerateRuntimeConfigurationFiles>false</GenerateRuntimeConfigurationFiles>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
 
     <!-- WPF -->
     <UseWPF>true</UseWPF>
@@ -37,6 +34,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.2.0" />
+    <PackageReference Include="Costura.Fody" Version="6.2.0" PrivateAssets="all" />
+    <PackageReference Include="Fody" Version="6.9.3" PrivateAssets="all" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
   </ItemGroup>
 </Project>

@@ -26,7 +26,7 @@ namespace Tools
             [Description("Start address as hex string (e.g. '0x401000') or symbol name (e.g. 'game.exe+1000')")] string address,
             [Description("Number of instructions to disassemble (default: 20, max: 200)")] int count = 20)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = AddressRequired };
@@ -74,11 +74,7 @@ namespace Tools
                     instructionCount = instructions.Count,
                     instructions
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_function_range"), Description(
@@ -86,7 +82,7 @@ namespace Tools
         public static object GetFunctionRange(
             [Description("Address inside the function as hex string or symbol name")] string address)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = AddressRequired };
@@ -106,11 +102,7 @@ namespace Tools
                     size = end - start,
                     symbol = symbolName
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "disassemble_bytes"), Description("Disassemble raw bytes (hex string) into assembly instructions")]
@@ -118,7 +110,7 @@ namespace Tools
             [Description("Hex byte string to disassemble (e.g. '90 90 CC' or '9090CC')")] string hexBytes,
             [Description("Address to use for relative address calculations")] string? address = null)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(hexBytes))
                     return new { success = false, error = "Hex bytes are required" };
@@ -132,11 +124,7 @@ namespace Tools
 
                 var result = Disassembler.DisassembleBytes(hexBytes, addr);
                 return new { success = true, result };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_previous_opcodes"), Description("Get previous instruction addresses before a given address (useful for navigating backwards in code)")]
@@ -144,7 +132,7 @@ namespace Tools
             [Description("Address to look before, as hex string or symbol name")] string address,
             [Description("Number of previous instructions to find (default: 5, max: 50)")] int count = 5)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = AddressRequired };
@@ -184,11 +172,7 @@ namespace Tools
                 }
 
                 return new { success = true, instructions };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "enum_memory_regions"), Description(
@@ -198,7 +182,7 @@ namespace Tools
         public static object EnumMemoryRegions(
             [Description("Filter by state: 'committed' (MEM_COMMIT=0x1000), 'reserved', 'free', or 'all' (default: committed)")] string filter = "committed")
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 var regions = MemoryRegions.EnumMemoryRegions();
 
@@ -221,18 +205,14 @@ namespace Tools
                 }).ToList();
 
                 return new { success = true, count = result.Count, regions = result };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_memory_protection"), Description("Get memory protection flags (read/write/execute) for an address")]
         public static object GetMemoryProtection(
             [Description("Memory address as hex string")] string address)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = AddressRequired };
@@ -250,11 +230,7 @@ namespace Tools
                     write = prot.Write,
                     execute = prot.Execute
                 };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "set_comment"), Description("Set a comment on a disassembled address (visible in CE Memory View)")]
@@ -262,7 +238,7 @@ namespace Tools
             [Description("Memory address as hex string or symbol name")] string address,
             [Description("Comment text to set")] string comment)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = AddressRequired };
@@ -273,11 +249,7 @@ namespace Tools
 
                 Disassembler.SetComment(resolvedAddr.Value, comment);
                 return new { success = true, address = $"0x{resolvedAddr.Value:X}" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         private static string ProtectToString(int protect)

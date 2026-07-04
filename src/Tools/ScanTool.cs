@@ -62,7 +62,7 @@ namespace Tools
             if (!IsProcessAttached())
                 return new { success = false, error = "No process is attached. Please open a process first using 'open_process' tool." };
 
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(pattern))
                     return new { success = false, error = "AOB pattern is required" };
@@ -76,11 +76,7 @@ namespace Tools
 
                 var addresses = result.Select(addr => $"0x{addr:X}").ToList();
                 return new { success = true, addresses };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
 #pragma warning disable S107 // Methods should not have too many parameters
@@ -94,7 +90,7 @@ namespace Tools
             [Description("Primary scan input value")] string input1 = "",
             [Description("Secondary scan input (for between scans)")] string? input2 = null,
             [Description("Start address for scan range")] ulong startAddress = 0,
-            [Description("Stop address for scan range")] ulong stopAddress = ulong.MaxValue,
+            [Description("Stop address for scan range")] ulong stopAddress = 0x7FFFFFFFFFFFFFFF,
             [Description("Memory protection flags (e.g. '+W-C')")] string protectionFlags = "+W-C",
             [Description("Alignment type")] AlignmentType alignmentType = AlignmentType.fsmAligned,
             [Description("Alignment parameter")] string alignmentParam = "4",
@@ -111,67 +107,85 @@ namespace Tools
             try
             {
                 bool isMainScanner = string.IsNullOrEmpty(scannerName);
-                MemScan scanner = isMainScanner ? GetMainScanner() : GetOrCreateIndependentScanner(scannerName!);
 
-                var parameters = new ScanParameters
+                // Run all scanner work on CE's main GUI thread. The scan engine
+                // and found list are not thread-safe; running Scan/InitializeResults
+                // over a large result set on the MCP worker thread races CE's main
+                // thread and crashes the process (notably nextScan over big found
+                // lists). Synchronize marshals onto the main thread, matching
+                // reset_memory_scan.
+                return Synchronize<object>(() =>
                 {
-                    ScanOption = scanOption,
-                    VarType = varType,
-                    Input1 = input1,
-                    Input2 = input2 ?? string.Empty,
-                    StartAddress = startAddress,
-                    StopAddress = stopAddress,
-                    ProtectionFlags = protectionFlags,
-                    AlignmentType = alignmentType,
-                    AlignmentParam = alignmentParam,
-                    IsHexadecimalInput = isHexadecimalInput,
-                    IsUnicodeScan = isUnicodeScan,
-                    IsCaseSensitive = isCaseSensitive,
-                    IsPercentageScan = isPercentageScan
-                };
+                    MemScan scanner = isMainScanner ? GetMainScanner() : GetOrCreateIndependentScanner(scannerName!);
 
-                // Use the high-level Scan() method which auto-detects first vs next scan
-                scanner.Scan(parameters);
-                scanner.WaitTillDone();
-
-                // Check if this was a region scan (unknown initial value)
-                // Region scans mark memory regions but don't have individual addressable results
-                bool isRegionScan = scanner.LastScanWasRegionScan;
-
-                if (isRegionScan)
-                {
-                    // For region scans, we can't read individual addresses (could be billions of bytes)
-                    // Just report success - the next scan will narrow it down
-                    return new
+                    var parameters = new ScanParameters
                     {
-                        success = true,
-                        isRegionScan = true,
-                        message = "Region scan completed. Memory regions marked for next scan. Perform a next scan with a specific condition (e.g., decreased value, exact value) to narrow down results.",
-                        syncedWithUI = isMainScanner
+                        ScanOption = scanOption,
+                        VarType = varType,
+                        Input1 = input1,
+                        Input2 = input2 ?? string.Empty,
+                        StartAddress = startAddress,
+                        StopAddress = stopAddress,
+                        ProtectionFlags = protectionFlags,
+                        AlignmentType = alignmentType,
+                        AlignmentParam = alignmentParam,
+                        IsHexadecimalInput = isHexadecimalInput,
+                        IsUnicodeScan = isUnicodeScan,
+                        IsCaseSensitive = isCaseSensitive,
+                        IsPercentageScan = isPercentageScan
                     };
-                }
 
-                // Initialize results using the high-level API
-                scanner.InitializeResults();
+                    // Release any FoundList still initialized from a previous
+                    // scan BEFORE scanning again. A foundlist left attached to
+                    // this memscan holds pointers into the prior result set; the
+                    // next scan frees/reallocates those results, so CE would
+                    // write through stale pointers and crash. This is the root
+                    // cause of the nextScan-over-a-large-set crashes.
+                    scanner.DeinitializeResults();
 
-                int count = scanner.GetResultCount();
-                if (count == 0)
-                    return new { success = true, count = 0, results = Array.Empty<object>(), syncedWithUI = isMainScanner };
+                    // Use the high-level Scan() method which auto-detects first vs next scan
+                    scanner.Scan(parameters);
+                    scanner.WaitTillDone();
 
-                var maxResults = Math.Min(count, 1000);
-                var results = new object[maxResults];
+                    // Check if this was a region scan (unknown initial value)
+                    // Region scans mark memory regions but don't have individual addressable results
+                    bool isRegionScan = scanner.LastScanWasRegionScan;
 
-                for (int i = 0; i < maxResults; i++)
-                {
-                    string addrStr = scanner.GetResultAddress(i);
-                    if (!ulong.TryParse(addrStr.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber, null, out ulong address))
-                        throw new FormatException($"Invalid address format from scan result: {addrStr}");
+                    if (isRegionScan)
+                    {
+                        // For region scans, we can't read individual addresses (could be billions of bytes)
+                        // Just report success - the next scan will narrow it down
+                        return new
+                        {
+                            success = true,
+                            isRegionScan = true,
+                            message = "Region scan completed. Memory regions marked for next scan. Perform a next scan with a specific condition (e.g., decreased value, exact value) to narrow down results.",
+                            syncedWithUI = isMainScanner
+                        };
+                    }
 
-                    object value = scanner.GetResultValue(i);
-                    results[i] = new { address = $"0x{address:X}", value };
-                }
+                    // Initialize results using the high-level API
+                    scanner.InitializeResults();
 
-                return new { success = true, count, results, syncedWithUI = isMainScanner };
+                    int count = scanner.GetResultCount();
+                    if (count == 0)
+                        return new { success = true, count = 0, results = Array.Empty<object>(), syncedWithUI = isMainScanner };
+
+                    var maxResults = Math.Min(count, 1000);
+                    var results = new object[maxResults];
+
+                    for (int i = 0; i < maxResults; i++)
+                    {
+                        string addrStr = scanner.GetResultAddress(i);
+                        if (!ulong.TryParse(addrStr.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber, null, out ulong address))
+                            throw new FormatException($"Invalid address format from scan result: {addrStr}");
+
+                        object value = scanner.GetResultValue(i);
+                        results[i] = new { address = $"0x{address:X}", value };
+                    }
+
+                    return new { success = true, count, results, syncedWithUI = isMainScanner };
+                });
             }
             catch (Exception ex)
             {

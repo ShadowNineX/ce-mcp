@@ -16,10 +16,42 @@ namespace Tools
 
 
 
+        [McpServerTool(Name = "get_plugin_version"), Description(
+            "Get the ce-mcp plugin version and on-disk path currently loaded in Cheat Engine. " +
+            "Use this to verify which build is actually live (CE loads the DLL from disk at startup), " +
+            "instead of assuming a freshly-copied file took effect.")]
+        public static object GetPluginVersion()
+        {
+            try
+            {
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                string location = asm.Location;
+                string fileVersion = "";
+                try
+                {
+                    if (!string.IsNullOrEmpty(location))
+                        fileVersion = System.Diagnostics.FileVersionInfo.GetVersionInfo(location).FileVersion ?? "";
+                }
+                catch { /* location may be empty for single-file/loaded-from-memory */ }
+
+                return new
+                {
+                    success = true,
+                    version = asm.GetName().Version?.ToString() ?? "unknown",
+                    fileVersion,
+                    location
+                };
+            }
+            catch (Exception ex)
+            {
+                return new { success = false, error = ex.Message };
+            }
+        }
+
         [McpServerTool(Name = "get_process_list"), Description("Get the list of all running processes")]
         public static object GetProcessList()
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 var processDict = Process.GetProcessList();
                 var processes = processDict
@@ -28,18 +60,14 @@ namespace Tools
                     .ToArray();
 
                 return new { success = true, processes };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "open_process"), Description("Open a process by ID or name")]
         public static object OpenProcess(
             [Description("Process ID (integer) or process name to open")] string process)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(process))
                     return new { success = false, error = "Process parameter is required" };
@@ -66,17 +94,13 @@ namespace Tools
 
                 Process.OpenProcess(target.Key);
                 return new { success = true };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "get_current_process"), Description("Get information about the process currently opened in Cheat Engine, including process ID, name, and threads")]
         public static object GetCurrentProcess()
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 int processId = Process.GetOpenedProcessID();
 
@@ -97,11 +121,7 @@ namespace Tools
                 var threads = threadList.GetAllThreadIds();
 
                 return new { success = true, isOpen = true, processId, processName, threads };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
     }

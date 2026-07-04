@@ -18,7 +18,7 @@ namespace Tools
             [Description("Memory address as hex string (e.g. '0x1234ABCD')")] string address,
             [Description("Request type: 'disassemble' or 'get-instruction-size' (default: disassemble)")] string? requestType = null)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(address))
                     return new { success = false, error = "Address parameter is required" };
@@ -34,11 +34,7 @@ namespace Tools
                 };
 
                 return new { success = true, result };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         [McpServerTool(Name = "resolve_address"), Description("Resolve an address from a string expression (supports symbols, module+offset, etc.)")]
@@ -46,18 +42,14 @@ namespace Tools
             [Description("Address string expression to resolve")] string addressString,
             [Description("Whether to resolve as local address")] bool local = false)
         {
-            try
+            return ToolThread.OnMainThread(() =>
             {
                 if (string.IsNullOrWhiteSpace(addressString))
                     return new { success = false, error = "Address string is required" };
 
                 var address = AddressResolver.GetAddressSafe(addressString, local);
                 return new { success = true, address = address.HasValue ? $"0x{address.Value:X}" : "0" };
-            }
-            catch (Exception ex)
-            {
-                return new { success = false, error = ex.Message };
-            }
+            });
         }
 
         private static bool TryParseAddress(string address, out ulong result) =>

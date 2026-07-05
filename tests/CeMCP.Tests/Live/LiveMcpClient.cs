@@ -1,165 +1,120 @@
-using System.Net.Http.Headers;
-using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 
 namespace CeMCP.Tests;
 
-internal sealed class LiveMcpClient : IDisposable
+internal sealed class LiveMcpClient : IAsyncDisposable
 {
     public const string ProtocolVersion = "2025-06-18";
 
-    private readonly HttpClient httpClient;
-    private int nextId;
+    private readonly McpClient client;
 
-    public LiveMcpClient(string serverUrl)
+    private LiveMcpClient(McpClient client)
     {
-        httpClient = new HttpClient
-        {
-            BaseAddress = new Uri(serverUrl.EndsWith("/", StringComparison.Ordinal)
-                ? serverUrl
-                : $"{serverUrl}/"),
-            Timeout = TimeSpan.FromSeconds(10)
-        };
+        this.client = client;
     }
 
-    public async Task<JsonObject> InitializeAsync()
+    public string NegotiatedProtocolVersion =>
+        client.NegotiatedProtocolVersion
+        ?? throw new InvalidOperationException("The MCP client did not report a negotiated protocol version.");
+
+    public static async Task<LiveMcpClient> ConnectAsync(string serverUrl)
     {
-        JsonObject response = await SendRequestAsync("initialize", new JsonObject
+        HttpClientTransport transport = new(new HttpClientTransportOptions
         {
-            ["protocolVersion"] = ProtocolVersion,
-            ["capabilities"] = new JsonObject(),
-            ["clientInfo"] = new JsonObject
+            Endpoint = NormalizeEndpoint(serverUrl),
+            Name = "ce-mcp-live-tests",
+            TransportMode = HttpTransportMode.StreamableHttp,
+            ConnectionTimeout = TimeSpan.FromSeconds(10)
+        });
+
+        try
+        {
+            McpClient client = await McpClient.CreateAsync(transport, new McpClientOptions
             {
-                ["name"] = "ce-mcp-live-tests",
-                ["version"] = "1.0.0"
-            }
-        });
+                ClientInfo = new Implementation
+                {
+                    Name = "ce-mcp-live-tests",
+                    Version = "1.0.0"
+                },
+                Capabilities = new ClientCapabilities(),
+                ProtocolVersion = ProtocolVersion
+            });
 
-        await SendNotificationAsync("notifications/initialized", new JsonObject());
-        return response;
-    }
-
-    public async Task<JsonArray> ListToolsAsync()
-    {
-        JsonObject response = await SendRequestAsync("tools/list", new JsonObject());
-        return response["result"]?["tools"]?.AsArray()
-            ?? throw new InvalidOperationException($"tools/list response did not contain result.tools: {response}");
-    }
-
-    public async Task<JsonNode?> CallToolAsync(string name, JsonObject? arguments = null)
-    {
-        JsonObject response = await SendRequestAsync("tools/call", new JsonObject
+            return new LiveMcpClient(client);
+        }
+        catch
         {
-            ["name"] = name,
-            ["arguments"] = arguments ?? new JsonObject()
-        });
+            await transport.DisposeAsync();
+            throw;
+        }
+    }
 
-        JsonObject result = response["result"]?.AsObject()
-            ?? throw new InvalidOperationException($"tools/call response did not contain result: {response}");
+    public ValueTask<IList<McpClientTool>> ListToolsAsync() => client.ListToolsAsync();
 
-        if (result["isError"]?.GetValue<bool>() == true)
-            throw new InvalidOperationException($"Tool '{name}' returned an MCP error: {result}");
+    public async Task<JsonNode?> CallToolAsync(
+        string name,
+        IReadOnlyDictionary<string, object?>? arguments = null)
+    {
+        CallToolResult result = await client.CallToolAsync(
+            name,
+            arguments ?? new Dictionary<string, object?>());
+
+        if (result.IsError == true)
+            throw new InvalidOperationException($"Tool '{name}' returned an MCP error: {FormatContent(result)}");
 
         return ExtractToolPayload(result);
     }
 
-    public void Dispose() => httpClient.Dispose();
+    public ValueTask DisposeAsync() => client.DisposeAsync();
 
-    private async Task<JsonObject> SendRequestAsync(string method, JsonObject parameters)
+    private static Uri NormalizeEndpoint(string serverUrl)
     {
-        int id = Interlocked.Increment(ref nextId);
-        JsonObject body = new()
-        {
-            ["jsonrpc"] = "2.0",
-            ["id"] = id,
-            ["method"] = method,
-            ["params"] = parameters
-        };
+        string endpoint = serverUrl.EndsWith("/", StringComparison.Ordinal)
+            ? serverUrl
+            : $"{serverUrl}/";
 
-        JsonObject response = await PostJsonAsync(body);
-        if (response["error"] is JsonNode error)
-            throw new InvalidOperationException($"MCP request '{method}' failed: {error}");
-
-        return response;
+        return new Uri(endpoint, UriKind.Absolute);
     }
 
-    private async Task SendNotificationAsync(string method, JsonObject parameters)
+    private static JsonNode? ExtractToolPayload(CallToolResult result)
     {
-        JsonObject body = new()
-        {
-            ["jsonrpc"] = "2.0",
-            ["method"] = method,
-            ["params"] = parameters
-        };
+        if (result.StructuredContent is JsonElement structuredContent)
+            return JsonNode.Parse(structuredContent.GetRawText());
 
-        using HttpRequestMessage request = CreateJsonRequest(body);
-        using HttpResponseMessage response = await httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
+        string? text = result.Content
+            .OfType<TextContentBlock>()
+            .Select(block => block.Text)
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
+        return string.IsNullOrWhiteSpace(text)
+            ? JsonSerializer.SerializeToNode(result)
+            : ParseTextPayload(text);
     }
 
-    private async Task<JsonObject> PostJsonAsync(JsonObject body)
+    private static JsonNode? ParseTextPayload(string text)
     {
-        using HttpRequestMessage request = CreateJsonRequest(body);
-        using HttpResponseMessage response = await httpClient.SendAsync(request);
-        string payload = await response.Content.ReadAsStringAsync();
-        response.EnsureSuccessStatusCode();
-
-        string json = response.Content.Headers.ContentType?.MediaType == "text/event-stream"
-            ? ExtractJsonFromServerSentEvents(payload)
-            : payload;
-
-        return JsonNode.Parse(json)?.AsObject()
-            ?? throw new InvalidOperationException($"MCP response was not a JSON object: {payload}");
-    }
-
-    private static HttpRequestMessage CreateJsonRequest(JsonObject body)
-    {
-        HttpRequestMessage request = new(HttpMethod.Post, "")
+        try
         {
-            Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json")
-        };
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-        request.Headers.TryAddWithoutValidation("MCP-Protocol-Version", ProtocolVersion);
-
-        return request;
-    }
-
-    private static string ExtractJsonFromServerSentEvents(string payload)
-    {
-        List<string> dataLines = [];
-
-        foreach (string line in payload.Split(["\r\n", "\n"], StringSplitOptions.None))
-        {
-            if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-            {
-                string data = line["data:".Length..].Trim();
-                if (data.Length > 0 && data != "[DONE]")
-                    dataLines.Add(data);
-            }
+            return JsonNode.Parse(text);
         }
-
-        if (dataLines.Count == 0)
-            throw new InvalidOperationException($"SSE response did not contain JSON data: {payload}");
-
-        return dataLines[^1];
+        catch (JsonException)
+        {
+            return JsonValue.Create(text);
+        }
     }
 
-    private static JsonNode? ExtractToolPayload(JsonObject result)
+    private static string FormatContent(CallToolResult result)
     {
-        if (result["structuredContent"] is JsonNode structuredContent)
-            return structuredContent;
+        string text = string.Join(Environment.NewLine, result.Content
+            .OfType<TextContentBlock>()
+            .Select(block => block.Text)
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
 
-        if (result["content"] is JsonArray content)
-        {
-            string? text = content
-                .Select(item => item?["text"]?.GetValue<string>())
-                .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
-
-            if (!string.IsNullOrWhiteSpace(text))
-                return JsonNode.Parse(text);
-        }
-
-        return result.DeepClone();
+        return string.IsNullOrWhiteSpace(text)
+            ? JsonSerializer.Serialize(result)
+            : text;
     }
 }

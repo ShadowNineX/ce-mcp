@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using ModelContextProtocol.Client;
 
 namespace CeMCP.Tests;
 
@@ -23,17 +24,16 @@ public sealed class LiveMcpTests
     [TestMethod]
     public async Task LiveServer_InitializesAndListsExpectedTools()
     {
-        using LiveMcpClient client = new(ServerUrl);
+        await using LiveMcpClient client = await LiveMcpClient.ConnectAsync(ServerUrl);
 
-        JsonObject initialize = await client.InitializeAsync();
-        JsonArray tools = await client.ListToolsAsync();
+        IList<McpClientTool> tools = await client.ListToolsAsync();
         List<string> toolNames = tools
-            .Select(tool => tool?["name"]?.GetValue<string>())
+            .Select(tool => tool.Name)
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Select(name => name!)
             .ToList();
 
-        Assert.AreEqual(LiveMcpClient.ProtocolVersion, initialize["result"]?["protocolVersion"]?.GetValue<string>());
+        Assert.AreEqual(LiveMcpClient.ProtocolVersion, client.NegotiatedProtocolVersion);
         CollectionAssert.Contains(toolNames, "get_plugin_version");
         CollectionAssert.Contains(toolNames, "execute_lua");
         CollectionAssert.Contains(toolNames, "memory_scan");
@@ -42,9 +42,8 @@ public sealed class LiveMcpTests
     [TestMethod]
     public async Task LiveServer_GetPluginVersionReportsLoadedPlugin()
     {
-        using LiveMcpClient client = new(ServerUrl);
+        await using LiveMcpClient client = await LiveMcpClient.ConnectAsync(ServerUrl);
 
-        await client.InitializeAsync();
         JsonNode? payload = await client.CallToolAsync("get_plugin_version");
 
         Assert.IsTrue(payload?["success"]?.GetValue<bool>());
@@ -55,10 +54,9 @@ public sealed class LiveMcpTests
     [TestMethod]
     public async Task LiveServer_ExecuteLuaRunsOnCeMainThread()
     {
-        using LiveMcpClient client = new(ServerUrl);
+        await using LiveMcpClient client = await LiveMcpClient.ConnectAsync(ServerUrl);
 
-        await client.InitializeAsync();
-        JsonNode? payload = await client.CallToolAsync("execute_lua", new JsonObject
+        JsonNode? payload = await client.CallToolAsync("execute_lua", new Dictionary<string, object?>
         {
             ["script"] = "return { mainThread = inMainThread(), marker = 'ce-mcp-live' }"
         });
@@ -71,9 +69,8 @@ public sealed class LiveMcpTests
     [TestMethod]
     public async Task LiveServer_GetCurrentProcessIsSafeWithoutTarget()
     {
-        using LiveMcpClient client = new(ServerUrl);
+        await using LiveMcpClient client = await LiveMcpClient.ConnectAsync(ServerUrl);
 
-        await client.InitializeAsync();
         JsonNode? payload = await client.CallToolAsync("get_current_process");
 
         Assert.IsTrue(payload?["success"]?.GetValue<bool>());

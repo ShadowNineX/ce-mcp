@@ -7,6 +7,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CeMCP", "CeMCP.csproj", "{C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CeMCP.Tests", "tests\CeMCP.Tests\CeMCP.Tests.csproj", "{7E95F3E2-7C32-4E38-9A9C-1378B2BBBF8F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CESDK.LiveTestPlugin", "CESDK\tests\CESDK.LiveTestPlugin\CESDK.LiveTestPlugin.csproj", "{8D77B145-D96D-4DB9-85B4-03271E28201A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CESDK.LiveTests", "CESDK\tests\CESDK.LiveTests\CESDK.LiveTests.csproj", "{6083D47A-7829-4B36-AB11-A11B764D749D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +25,14 @@ Global
 		{7E95F3E2-7C32-4E38-9A9C-1378B2BBBF8F}.Debug|x64.Build.0 = Debug|x64
 		{7E95F3E2-7C32-4E38-9A9C-1378B2BBBF8F}.Release|x64.ActiveCfg = Release|x64
 		{7E95F3E2-7C32-4E38-9A9C-1378B2BBBF8F}.Release|x64.Build.0 = Release|x64
+		{8D77B145-D96D-4DB9-85B4-03271E28201A}.Debug|x64.ActiveCfg = Debug|x64
+		{8D77B145-D96D-4DB9-85B4-03271E28201A}.Debug|x64.Build.0 = Debug|x64
+		{8D77B145-D96D-4DB9-85B4-03271E28201A}.Release|x64.ActiveCfg = Release|x64
+		{8D77B145-D96D-4DB9-85B4-03271E28201A}.Release|x64.Build.0 = Release|x64
+		{6083D47A-7829-4B36-AB11-A11B764D749D}.Debug|x64.ActiveCfg = Debug|x64
+		{6083D47A-7829-4B36-AB11-A11B764D749D}.Debug|x64.Build.0 = Debug|x64
+		{6083D47A-7829-4B36-AB11-A11B764D749D}.Release|x64.ActiveCfg = Release|x64
+		{6083D47A-7829-4B36-AB11-A11B764D749D}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

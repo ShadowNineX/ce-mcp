@@ -35,6 +35,7 @@
 
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
+    <Compile Remove="CESDK\tests\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,7 +8,7 @@ This repository builds `ce-mcp.dll`, a Cheat Engine plugin that hosts an MCP ser
 - `src/Tools/`: MCP tool classes for process, memory, scan, debugger, symbols, Lua, assembly, and address-list operations.
 - `src/Views/` and `src/Models/`: WPF configuration UI.
 - `CESDK/`: git submodule containing the Cheat Engine Lua API wrapper.
-- `skills/ce-mcp/`: distributable AI skill for using and extending this MCP server. Keep it aligned with the codebase.
+- `skills/ce-mcp/`: distributable AI skill for consuming this MCP server. Keep it aligned with the public tool surface.
 - `.github/workflows/`: Windows CI for Debug/Release DLL builds and SonarQube analysis.
 - Cheat Engine `celua.txt`: installed with Cheat Engine, commonly at `C:\Program Files\Cheat Engine\celua.txt`. Consult the installed file before changing CE/Lua bindings or Lua guidance.
 
@@ -18,10 +18,11 @@ This repository builds `ce-mcp.dll`, a Cheat Engine plugin that hosts an MCP ser
 git submodule update --init --recursive
 dotnet restore
 dotnet build
+dotnet test
 dotnet build -c Release
 ```
 
-`dotnet build` creates `bin/x64/Debug/net10.0-windows/ce-mcp.dll`; Release outputs the same path under `Release`. To test manually, copy the DLL into the Cheat Engine plugins directory, enable it in Cheat Engine 7.6.2+, start the MCP server from the `MCP` menu, and connect a client to `http://localhost:6300/`.
+`dotnet build` creates `bin/x64/Debug/net10.0-windows/ce-mcp.dll`; Release outputs the same path under `Release`. `dotnet test` runs the MSTest.Sdk/Microsoft.Testing.Platform tests that do not require Cheat Engine. To test manually, copy the DLL into the Cheat Engine plugins directory, enable it in Cheat Engine 7.6.2+, start the MCP server from the `MCP` menu, and connect a client to `http://localhost:6300/`.
 
 ## Coding Style & Naming Conventions
 
@@ -54,7 +55,7 @@ python C:\Users\Shadow\.codex\skills\.system\skill-creator\scripts\quick_validat
 
 ## Testing Guidelines
 
-There is no automated test project yet because most behavior requires Cheat Engine at runtime. Always run `dotnet build` before submitting changes. For CE-facing changes, perform a manual plugin smoke test and document which MCP tools or CE menu flows were exercised. For scans, preserve the scan, `WaitTillDone()`, and results initialization sequence.
+Automated tests live in `tests/CeMCP.Tests/` and use `MSTest.Sdk` on Microsoft.Testing.Platform. Normal CE-free tests live in `tests/CeMCP.Tests/Unit/` and cover deterministic behavior such as schema transforms, MCP tool metadata contracts, server config environment overrides, tool input validation/result shaping, and skill bundle rules. Shared test helpers live in `tests/CeMCP.Tests/Support/`. Run `dotnet test` before submitting changes, and run `dotnet build -c Release` when packaging output matters. Live MCP integration tests live in `tests/CeMCP.Tests/Live/` and are opt-in: load the built DLL into Cheat Engine, start the MCP server, set `CE_MCP_LIVE=1`, optionally set `CE_MCP_URL`, then run `dotnet test --filter TestCategory=Live`. Keep default live tests limited to safe inspection calls unless a test clearly documents target-process setup and risk. For CE-facing changes, also perform a manual plugin smoke test and document which MCP tools or CE menu flows were exercised. For scans, preserve the scan, `WaitTillDone()`, and results initialization sequence.
 
 ## Commit & Pull Request Guidelines
 

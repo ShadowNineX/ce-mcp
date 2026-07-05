@@ -15,16 +15,30 @@ namespace Tools
     /// </summary>
     internal static class ToolThread
     {
+        private static Func<Func<object>, object> runOnMainThread = body => Synchronize(body);
+
         public static object OnMainThread(Func<object> body)
         {
             try
             {
-                return Synchronize(body);
+                return runOnMainThread(body);
             }
             catch (Exception ex)
             {
                 return new { success = false, error = ex.Message };
             }
+        }
+
+        internal static IDisposable UseMainThreadRunnerForTests(Func<Func<object>, object> runner)
+        {
+            var previous = runOnMainThread;
+            runOnMainThread = runner;
+            return new RestoreMainThreadRunner(previous);
+        }
+
+        private sealed class RestoreMainThreadRunner(Func<Func<object>, object> previous) : IDisposable
+        {
+            public void Dispose() => runOnMainThread = previous;
         }
     }
 }

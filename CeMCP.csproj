@@ -34,6 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="skills\ce-mcp\**\*.*"
              Exclude="skills\ce-mcp\references\local-cheat-engine.md;skills\ce-mcp\references\.gitignore">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

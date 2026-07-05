@@ -46,4 +46,5 @@ jobs:
 
           .\.sonar\scanner\dotnet-sonarscanner begin /k:"shadowninex_ce-mcp" /o:"shadowninex" /d:sonar.token="${{ secrets.SONAR_TOKEN }}" /d:sonar.host.url="https://sonarcloud.io"
           dotnet build --no-incremental
+          dotnet test --no-restore --no-build --filter "TestCategory!=Live"
           .\.sonar\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"

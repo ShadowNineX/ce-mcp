@@ -53,7 +53,6 @@ namespace Tools
         }
 
         private static bool TryParseAddress(string address, out ulong result) =>
-            ulong.TryParse(address.Replace("0x", "").Replace("0X", ""),
-                System.Globalization.NumberStyles.HexNumber, null, out result);
+            AddressParser.TryParseHexAddress(address, out result);
     }
 }

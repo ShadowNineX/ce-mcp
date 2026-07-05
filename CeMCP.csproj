@@ -34,6 +34,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="skills\ce-mcp\**\*.*"
+             Exclude="skills\ce-mcp\references\local-cheat-engine.md;skills\ce-mcp\references\.gitignore">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>skills\ce-mcp\%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Costura.Fody" Version="6.2.0" PrivateAssets="all" />
     <PackageReference Include="Fody" Version="6.9.3" PrivateAssets="all" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
